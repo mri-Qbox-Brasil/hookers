@@ -10,7 +10,7 @@ Config.MaxServices = 3
 Config.MaxVehicleSpeed = 0.1
 
 Config.PaymentEnabled = false
-Config.Framework = "standalone" -- "esx", "qbcore", "ndcore" or "standalone" (used for the payments)
+Config.Framework = "qbcore" -- "esx", "qbcore", "ndcore" or "standalone" (used for the payments)
 Config.Prices = {
     SERVICE_BLOWJOB = 50,
     SERVICE_SEX = 100
@@ -18,13 +18,14 @@ Config.Prices = {
 
 -- Localization
 Config.Localization = {
-    InviteHooker = "Press ~INPUT_VEH_HORN~ or honk your horn to invite the prostitute into the vehicle.",
-    FindSecludedArea = "Go somewhere more secluded.",
-    FindSecludedAreaFailed = "You did not find a secluded area in time.",
-    VehicleUnsuitable = "You cannot pick up hookers in this vehicle.",
-    FrontSeatOccupied = "The front seat needs to be empty to invite a hooker.",
-    NotEnoughMoney = "You don't have enough money!"
+    InviteHooker = "Pressione ~INPUT_VEH_HORN~ ou buzine para convidar a prostituta para o veículo.",
+    FindSecludedArea = "Vá para um local mais isolado.",
+    FindSecludedAreaFailed = "Você não encontrou uma área isolada a tempo.",
+    VehicleUnsuitable = "Você não pode pegar prostitutas neste veículo.",
+    FrontSeatOccupied = "O banco da frente precisa estar vazio para convidar uma prostituta.",
+    NotEnoughMoney = "Você não tem dinheiro suficiente!"
 }
+
 
 -- The peds that are considered hookers. (be carefull what you add here.)
 Config.HookerPedModels = {
