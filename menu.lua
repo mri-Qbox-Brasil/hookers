@@ -1,10 +1,10 @@
 local serviceSelected = nil
 local servicesMenu = {
-    Title = "Services Available",
+    Title = "Serviços Disponíveis",
     Buttons = {
-        { service = "SERVICE_BLOWJOB", label = "Blow Job", price = Config.PaymentEnabled and Config.Prices.SERVICE_BLOWJOB or nil },
-        { service = "SERVICE_SEX", label = "Sex", price = Config.PaymentEnabled and Config.Prices.SERVICE_SEX or nil },
-        { service = "SERVICE_DECLINE", label = "Decline Service" },
+        { service = "SERVICE_BLOWJOB", label = "Boquetão", price = Config.PaymentEnabled and Config.Prices.SERVICE_BLOWJOB or nil },
+        { service = "SERVICE_SEX", label = "Cavalgada", price = Config.PaymentEnabled and Config.Prices.SERVICE_SEX or nil },
+        { service = "SERVICE_DECLINE", label = "Dispensar" },
     },
     OnButtonSelected = function(button)
 		serviceSelected = button.service
