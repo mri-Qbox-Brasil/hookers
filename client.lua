@@ -1,8 +1,24 @@
 local isHookerThreadActive = false
 local isUsingHooker = false
-local disableVehicleMovement = false
+local disableVehicleControls = false
 local hookerModels = Config.HookerPedModels
 local hasPayed = nil
+
+local PLAYER_ID <const> = PlayerId()
+
+-- Vehicle controls that will get disabled while interacting with a hooker in your car
+local VEHICLE_CONTROLS <const> = {
+    [59] = true, -- INPUT_VEH_MOVE_LR
+    [60] = true, -- INPUT_VEH_MOVE_UD
+    [61] = true, -- INPUT_VEH_MOVE_UP_ONLY
+    [62] = true, -- INPUT_VEH_MOVE_DOWN_ONLY
+    [63] = true, -- INPUT_VEH_MOVE_LEFT_ONLY
+    [64] = true, -- INPUT_VEH_MOVE_RIGHT_ONLY
+    [71] = true, -- INPUT_VEH_ACCELERATE
+    [72] = true, -- INPUT_VEH_BRAKE
+    [73] = true, -- INPUT_VEH_DUCK
+    [86] = true  -- INPUT_VEH_HORN
+}
 
 
 -- Utils --
@@ -38,7 +54,7 @@ end
 
 -- This only works with mp peds, everyone else will be male regardless. IsPedMale() returns true regardless, so this is better.
 local function GetPedGender(ped)
-    if GetEntityModel(ped) == GetHashKey("mp_f_freemode_01") then
+    if GetEntityModel(ped) == `mp_f_freemode_01` then
         return "female"
     else
         return "male"
@@ -84,9 +100,18 @@ local function IsPedEligibleHooker(ped)
     return true
 end
 
-function CanVehiclePickUpHookers(vehicle)
+local function CanVehiclePickUpHookers(vehicle)
+    if not IsVehicleDriveable(vehicle, false) then
+        return false
+    end
+
     local class = GetVehicleClass(vehicle)
     if Config.BlackListedVehicleClasses[class] then
+        return false
+    end
+
+    local model = GetEntityModel(vehicle)
+    if Config.BlackListedVehicles[model] then
         return false
     end
 
@@ -105,19 +130,18 @@ end
 -- AI Behavior --
 local function MakeHookerCalm(hooker)
     local _void, groupHash = AddRelationshipGroup("ProstituteInPlay")
-    SetRelationshipBetweenGroups(1, groupHash, GetHashKey("PLAYER"))
+    SetRelationshipBetweenGroups(1, groupHash, `PLAYER`)
     SetPedRelationshipGroupHash(hooker, groupHash)
 
-    -- Not sure what the two first are found them in the single player prostitute script, I just assume they do something.
-    SetPedConfigFlag(hooker, 26, true)            -- _0x034F3053 
-    SetPedConfigFlag(hooker, 115, true)           -- _0x0D2A9309
+    SetPedConfigFlag(hooker, 26, true)            -- CPED_CONFIG_FLAG_DontDragMeOutCar
+    SetPedConfigFlag(hooker, 115, true)           -- CPED_CONFIG_FLAG_FallOutOfVehicleWhenKilled
     SetPedConfigFlag(hooker, 229, true)           -- CPED_CONFIG_FLAG_DisablePanicInVehicle 
     SetBlockingOfNonTemporaryEvents(hooker, true) -- Makes the hooker not react to everything around them
 end
 
 local function ResetHookerCalm(hooker)
-    SetPedConfigFlag(hooker, 26, false)            -- _0x034F3053 
-    SetPedConfigFlag(hooker, 115, false)           -- _0x0D2A9309
+    SetPedConfigFlag(hooker, 26, false)            -- CPED_CONFIG_FLAG_DontDragMeOutCar
+    SetPedConfigFlag(hooker, 115, false)           -- CPED_CONFIG_FLAG_FallOutOfVehicleWhenKilled
     SetPedConfigFlag(hooker, 229, false)           -- CPED_CONFIG_FLAG_DisablePanicInVehicle 
     SetBlockingOfNonTemporaryEvents(hooker, false) -- Makes the hooker not react to everything around them
 end
@@ -217,8 +241,6 @@ local function PlaySexScene(scene, hooker, vehicle)
         animation.player.exit2 = "sex_to_proposition_p2_male"
     end
 
-    LoadAnimDict("mini@prostitutes@sexnorm_veh")
-
     PlaySexSceneAnim(hooker, playerPed, animation.hooker.enter1, animation.player.enter1, 2, true)
     PlaySexSceneAnim(hooker, playerPed, animation.hooker.enter2, animation.player.enter2, 2, true)
 
@@ -247,31 +269,23 @@ local function PlaySexScene(scene, hooker, vehicle)
 
     PlaySexSceneAnim(hooker, playerPed, animation.hooker.exit1, animation.player.exit1, 2, true)
     PlaySexSceneAnim(hooker, playerPed, animation.hooker.exit2, animation.player.exit2, 2, true)
-
     PlaySexSceneAnim(hooker, playerPed, "proposition_loop_prostitute", "proposition_loop_male", 1, false)
 end
 
-local function DisableVehicleMovementLoop()
-    CreateThread(function()
-        while disableVehicleMovement do
-            DisableControlAction(0, 59, true)
-            DisableControlAction(0, 60, true)
-            DisableControlAction(0, 61, true)
-            DisableControlAction(0, 62, true)
-            DisableControlAction(0, 63, true)
-            DisableControlAction(0, 64, true)
-            DisableControlAction(0, 71, true)
-            DisableControlAction(0, 72, true)
-            DisableControlAction(0, 73, true)
-            Wait(0)
+local function DisableVehicleControlsLoop()
+    while disableVehicleControls do
+        for control, state in pairs(VEHICLE_CONTROLS) do
+            DisableControlAction(0, control, state)
         end
-    end)
+
+        Wait(0)
+    end
 end
 
-local function DisableVehicleMovement(state)
-    disableVehicleMovement = state
-    if disableVehicleMovement then
-        DisableVehicleMovementLoop()
+local function DisableVehicleControls(state)
+    disableVehicleControls = state
+    if disableVehicleControls then
+        CreateThread(DisableVehicleControlsLoop)
     end
 end
 
@@ -285,7 +299,7 @@ local function HookerLoop(hooker)
             vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
             if vehicle ~= 0 and #(GetEntityCoords(vehicle) - GetEntityCoords(hooker)) < Config.MaxDistance and GetEntitySpeed(vehicle) <= Config.MaxVehicleSpeed then
                 DisplayHelpText(Config.Localization.InviteHooker)
-                if IsPlayerPressingHorn(PlayerId()) then
+                if IsPlayerPressingHorn(PLAYER_ID) then
                     break
                 end
             else
@@ -415,7 +429,8 @@ local function HookerLoop(hooker)
         end
 
         SetVehicleLights(vehicle, 1) -- Turn off vehicle lights
-        DisableVehicleMovement(true) -- Disable vehicle movement
+        DisableVehicleControls(true) -- Disable vehicle movement
+        LoadAnimDict("mini@prostitutes@sexnorm_veh")
 
         Wait(500)
         PlayHookerSpeach(hooker, "HOOKER_OFFER_SERVICE", "SPEECH_PARAMS_FORCE_SHOUTED_CLEAR")
@@ -430,7 +445,7 @@ local function HookerLoop(hooker)
         while true do
             if not DoesEntityExist(hooker) then
                 HookerInteractionCanceled()
-                DisableVehicleMovement(false)
+                DisableVehicleControls(false)
                 return
             end
 
@@ -484,9 +499,10 @@ local function HookerLoop(hooker)
 
         ClearPedTasks(hooker)
         ClearPedTasks(PlayerPedId())
+        RemoveAnimDict("mini@prostitutes@sexnorm_veh")
 
         TaskLeaveVehicle(hooker, vehicle, 0)
-        DisableVehicleMovement(false)
+        DisableVehicleControls(false)
 
         Wait(2000)
         SetVehicleLights(vehicle, 0)
@@ -569,7 +585,7 @@ end
 -- Events --
 AddEventHandler('gameEventTriggered', function(event, args)
     if event == "CEventNetworkPlayerEnteredVehicle" then
-        if args[1] == PlayerId() then
+        if args[1] == PLAYER_ID then
             if isHookerThreadActive then
                 return
             end
